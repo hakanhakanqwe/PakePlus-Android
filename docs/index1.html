@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turk IPTV Player</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 350px;
+            background: #1a1a1a;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: #222;
+            border-bottom: 1px solid #333;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.5rem;
+            color: #e50914;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .search-box {
+            margin-top: 15px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            background: #333;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-box input:focus {
+            border-color: #e50914;
+            background: #2a2a2a;
+        }
+
+        .search-box i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+        }
+
+        .category-filter {
+            display: flex;
+            gap: 8px;
+            padding: 15px 20px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .category-filter::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cat-btn {
+            padding: 6px 14px;
+            background: #333;
+            border: none;
+            border-radius: 20px;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 12px;
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+
+        .cat-btn:hover, .cat-btn.active {
+            background: #e50914;
+            color: #fff;
+        }
+
+        .channel-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 10px 10px;
+        }
+
+        .channel-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .channel-list::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .channel-list::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 3px;
+        }
+
+        .channel-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 5px;
+            background: #222;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .channel-item:hover {
+            background: #2a2a2a;
+            transform: translateX(5px);
+        }
+
+        .channel-item.active {
+            border-color: #e50914;
+            background: #2a1a1a;
+        }
+
+        .channel-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: contain;
+            background: #fff;
+            padding: 3px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .channel-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .channel-name {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .channel-group {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .play-icon {
+            width: 35px;
+            height: 35px;
+            background: #e50914;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            flex-shrink: 0;
+        }
+
+        .channel-item:hover .play-icon,
+        .channel-item.active .play-icon {
+            opacity: 1;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #000;
+            position: relative;
+        }
+
+        .video-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: #000;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .video-placeholder {
+            text-align: center;
+            color: #666;
+        }
+
+        .video-placeholder i {
+            font-size: 80px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .video-placeholder h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .video-placeholder p {
+            font-size: 14px;
+        }
+
+        /* Player Controls */
+        .player-controls {
+            background: #1a1a1a;
+            padding: 15px 25px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-top: 1px solid #333;
+        }
+
+        .ctrl-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            transition: all 0.3s;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ctrl-btn:hover {
+            background: #333;
+            color: #e50914;
+        }
+
+        .ctrl-btn.play-btn {
+            background: #e50914;
+            font-size: 20px;
+        }
+
+        .ctrl-btn.play-btn:hover {
+            background: #ff0a16;
+        }
+
+        .now-playing {
+            flex: 1;
+            margin-left: 15px;
+        }
+
+        .now-playing h3 {
+            font-size: 16px;
+            margin-bottom: 3px;
+        }
+
+        .now-playing span {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .volume-control input[type="range"] {
+            width: 100px;
+            height: 4px;
+            -webkit-appearance: none;
+            background: #444;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .volume-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #e50914;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .fullscreen-btn {
+            margin-left: auto;
+        }
+
+        /* Mobile Toggle */
+        .menu-toggle {
+            display: none;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0,0,0,0.8);
+            border: none;
+            color: #fff;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        /* Loading Spinner */
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #333;
+            border-top-color: #e50914;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                z-index: 99;
+                height: 100%;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .menu-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .main-content {
+                width: 100%;
+            }
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #e50914;
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1><i class="fas fa-tv"></i> Turk IPTV</h1>
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Kanal ara...">
+                </div>
+            </div>
+            
+            <div class="category-filter" id="categoryFilter">
+                <button class="cat-btn active" data-cat="all">Tümü</button>
+                <button class="cat-btn" data-cat="Ulusal">Ulusal</button>
+                <button class="cat-btn" data-cat="Haber">Haber</button>
+                <button class="cat-btn" data-cat="Spor">Spor</button>
+                <button class="cat-btn" data-cat="Muzik">Müzik</button>
+                <button class="cat-btn" data-cat="Eglence">Eğlence</button>
+                <button class="cat-btn" data-cat="Cocuk">Çocuk</button>
+                <button class="cat-btn" data-cat="Dini">Dini</button>
+                <button class="cat-btn" data-cat="Belgesel">Belgesel</button>
+                <button class="cat-btn" data-cat="XXX">XXX</button>
+            </div>
+
+            <div class="channel-list" id="channelList">
+                <!-- Kanallar JS ile yüklenecek -->
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <button class="menu-toggle" id="menuToggle">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <div class="video-container">
+                <div class="video-placeholder" id="placeholder">
+                    <i class="fas fa-play-circle"></i>
+                    <h2>IPTV Player</h2>
+                    <p>Sol menüden bir kanal seçin</p>
+                </div>
+                <video id="videoPlayer" controls style="display: none;"></video>
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <div class="player-controls" id="controls" style="display: none;">
+                <button class="ctrl-btn play-btn" id="playBtn">
+                    <i class="fas fa-pause"></i>
+                </button>
+                <button class="ctrl-btn" id="prevBtn">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button class="ctrl-btn" id="nextBtn">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+                
+                <div class="now-playing">
+                    <h3 id="currentChannel">Kanal Seçilmedi</h3>
+                    <span id="currentGroup">-</span>
+                </div>
+
+                <div class="volume-control">
+                    <button class="ctrl-btn" id="muteBtn">
+                        <i class="fas fa-volume-up"></i>
+                    </button>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="50">
+                </div>
+
+                <button class="ctrl-btn fullscreen-btn" id="fullscreenBtn">
+                    <i class="fas fa-expand"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Kanal verileri
+        const channels = [
+            { name: "TRT 1", url: "https://trt.daioncdn.net/trt-1/master.m3u8?app=web", logo: "http://assets.tvcdn.net/1045ea2f-2453-451d-a55f-ba17539641dd.png", group: "Ulusal" },
+            { name: "ATV", url: "http://116.202.238.88/ATV_TR/tracks-v1a1/index.m3u8", logo: "http://assets.tvcdn.net/89a47b4b-5d20-4248-9f4c-a3d2756072dd.png", group: "Ulusal" },
+            { name: "ATV Avrupa", url: "http://162.212.179.33/dvrfl05/gin-atvavrupa/playlist.m3u8", logo: "http://assets.tvcdn.net/89a47b4b-5d20-4248-9f4c-a3d2756072dd.png", group: "Ulusal - Yurt Disi" },
+            { name: "Show TV", url: "https://ciner.daioncdn.net/showtv/showtv.m3u8?ce=3&app=4bc856ef-4c68-4a94-bc87-37dfaaa66558", logo: "http://assets.tvcdn.net/9d873881-bb5e-40f0-88db-8c47aa215e5a.png", group: "Ulusal" },
+            { name: "Show TV Max", url: "https://raw.githubusercontent.com/ipstreet312/freeiptv/master/ressources/tur/shmax.m3u8", logo: "https://i.imgur.com/456FWA7.png", group: "Ulusal - Yurt Disi" },
+            { name: "Star TV", url: "https://raw.githubusercontent.com/ipstreet312/freeiptv/refs/heads/master/ressources/tur/star.m3u8", logo: "http://assets.tvcdn.net/0c5204fb-e613-4084-b300-8cdcc46309f9.png", group: "Ulusal" },
+            { name: "Eurostar", url: "https://raw.githubusercontent.com/ipstreet312/freeiptv/master/ressources/tur/estar.m3u8", logo: "https://i.imgur.com/kb165Ot.png", group: "Ulusal - Yurt Disi" },
+            { name: "Kanal D", url: "http://live.duhnet.tv/S2/HLS_LIVE/kanalddainp/playlist.m3u8", logo: "http://assets.tvcdn.net/a06096dc-fd5e-4103-bfb4-83e612df23ec.png", group: "Ulusal" },
+            { name: "Euro D", url: "http://live.duhnet.tv/S2/HLS_LIVE/eurodnp/playlist.m3u8", logo: "http://assets.tvcdn.net/f4a83153-48c6-4ece-8082-1b370768f88a.png", group: "Ulusal - Yurt Disi" },
+            { name: "Now TV", url: "http://116.202.238.88/FOXTV_TR/index.m3u8", logo: "http://assets.tvcdn.net/80eb8816-1855-41f5-9002-7a05cc93fe4f.png", group: "Ulusal" },
+            { name: "TV8", url: "https://tv8.daioncdn.net/tv8/tv8.m3u8?app=7ddc255a-ef47-4e81-ab14-c0e5f2949788", logo: "http://assets.tvcdn.net/f91342d2-bcae-4ee0-a6f8-76a8d32b891b.png", group: "Ulusal" },
+            { name: "TV8.5", url: "https://tv8.daioncdn.net/tv8bucuk/tv8bucuk.m3u8?app=tv8bucuk_web", logo: "https://i.ibb.co/dgj3MTh/tv85.png", group: "Ulusal" },
+            { name: "Kanal 7", url: "https://kanal7-live.daioncdn.net/kanal7/kanal7.m3u8", logo: "http://assets.tvcdn.net/1125734c-3525-4390-b8ed-c50380c70e4d.png", group: "Ulusal" },
+            { name: "Kanal 7 Avrupa", url: "https://livetv.radyotvonline.net/kanal7live/kanal7avr/playlist.m3u8", logo: "https://i.imgur.com/wlfyj5l.png", group: "Ulusal - Yurt Disi" },
+            { name: "FLASH HABER", url: "https://flashhaber-live.ercdn.net/flashhaber/flashhaber.m3u8", logo: "https://i.ibb.co/F5FcvbZ/flash4ok.png", group: "Haber" },
+            { name: "A2", url: "https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/a2tv/a2tv.m3u8", logo: "http://assets.tvcdn.net/9db055df-4bc8-4a68-b0fd-766a5a3113bc.png", group: "Eglence" },
+            { name: "TEVE2", url: "http://live.duhnet.tv/S2/HLS_LIVE/teve2np/playlist.m3u8", logo: "http://assets.tvcdn.net/4cad68c0-fa2c-4b84-a1c2-1f0704eca7a4.png", group: "Eglence" },
+            { name: "DMAX", url: "http://dygvideo.dygdigital.com/live/hls/dmaxdai?m3u8", logo: "http://assets.tvcdn.net/32da9e04-0514-4e3c-b8e1-854f1fc175ed.png", group: "Eglence" },
+            { name: "TLC", url: "http://dygvideo.dygdigital.com/live/hls/tlctvdai?m3u8", logo: "http://assets.tvcdn.net/9871d781-b961-45cc-a287-c304f02bef1d.png", group: "Eglence" },
+            { name: "TV 100", url: "https://tv100-live.daioncdn.net/tv100/tv100_1080p.m3u8", logo: "http://assets.tvcdn.net/d7741078-ccce-47d8-ba1c-a041b659bad6.png", group: "Ulusal" },
+            { name: "TRT Turk", url: "https://tv-trtturk.medya.trt.com.tr/master.m3u8", logo: "http://assets.tvcdn.net/fbaaa75c-0a2d-4ed6-b498-d32a59ddb899.png", group: "Ulusal" },
+            { name: "TRT Haber", url: "https://tv-trthaber.medya.trt.com.tr/master.m3u8", logo: "http://assets.tvcdn.net/ecbd3154-e8e7-44d7-bcbd-a9bcac9df4de.png", group: "Haber" },
+            { name: "TGRT Haber", url: "https://canli.tgrthaber.com/tgrt.m3u8", logo: "https://i.imgur.com/PrxwKDw.png", group: "Haber" },
+            { name: "A Haber", url: "http://65.108.239.207/ahaber/index.m3u8", logo: "http://assets.tvcdn.net/06e7abd9-0fbb-441f-af63-b895513d3aaa.png", group: "Haber" },
+            { name: "CNN Turk", url: "https://dsmartgo-live.ercdn.net/dsmartgo/cnnturk/cnnturk.isml/cnnturk.m3u8", logo: "https://i.ibb.co/JqWCczW/cnnturk1.png", group: "Haber" },
+            { name: "Beyaz TV", url: "https://beyaztv.daioncdn.net/beyaztv/beyaztv.m3u8?app=fcd5c66b-da9d-44ba-a410-4f34805c397d&ce=3", logo: "http://assets.tvcdn.net/60d7aaf4-817b-46be-bbab-68f8b30de8fb.png", group: "Haber" },
+            { name: "Haberturk", url: "https://tv.ensonhaber.com/haberturk/haberturk.m3u8", logo: "http://assets.tvcdn.net/9fbfa842-0fff-488a-aab7-d534dbbfe8a9.png", group: "Haber" },
+            { name: "Haber Global", url: "https://tv.ensonhaber.com/haberglobal/haberglobal.m3u8", logo: "http://assets.tvcdn.net/d7e11245-3318-4cfd-bd1c-bdbb03d4c76a.png", group: "Haber" },
+            { name: "Halk TV", url: "https://halktv-live.daioncdn.net/halktv/halktv.m3u8", logo: "http://assets.tvcdn.net/f0bcd016-8730-4700-9156-d6b678f8e554.png", group: "Haber" },
+            { name: "NTV", url: "http://dygvideo.dygdigital.com/live/hls/ntv4puhu?m3u8", logo: "http://assets.tvcdn.net/b2aa3114-53bd-4ff5-81ed-af75a28e651f.png", group: "Haber" },
+            { name: "ULKE TV", url: "https://livetv.radyotvonline.net/kanal7live/ulketv/playlist.m3u8", logo: "https://i.imgur.com/wdWR7Qk.png", group: "Haber" },
+            { name: "24 TV", url: "https://tv.ensonhaber.com/tv24/tv24.m3u8", logo: "http://assets.tvcdn.net/49267a8f-6313-43f9-bab4-9d5f109bad1b.png", group: "Haber" },
+            { name: "360 TV", url: "https://turkmedya-live.ercdn.net/tv360/tv360.m3u8", logo: "http://assets.tvcdn.net/e1c3f150-4f79-4ac4-a893-4cc1144eb2d5.png", group: "Haber" },
+            { name: "Akit TV", url: "https://akittv-live.ercdn.net/akittv/akittv.m3u8", logo: "http://assets.tvcdn.net/bf736fbe-8a9d-4444-adfd-99f3e7593ef9.png", group: "Haber" },
+            { name: "Sozcu TV", url: "https://trn03.tulix.tv/gt-sozcu-tv/playlist.m3u8", logo: "http://assets.tvcdn.net/491384df-7154-4404-8f97-2e7847655441.png", group: "Haber" },
+            { name: "Tele 1", url: "https://tele1-live.ercdn.net/tele1/tele1.m3u8", logo: "http://assets.tvcdn.net/c3a805dd-2d39-47a8-8b49-a8139bdbeeeb.png", group: "Haber" },
+            { name: "TVNET", url: "https://mn-nl.mncdn.com/tvnet/tvnet/playlist.m3u8", logo: "http://assets.tvcdn.net/542d8afd-1bf7-44bd-8dfe-0b8e9ea2d3ec.png", group: "Haber" },
+            { name: "CNBC-E", url: "https://hnpsechtsc.turknet.ercdn.net/xpnvudnlsv/cnbc-e/cnbc-e.m3u8", logo: "https://i.ibb.co/kcpSwmK/cnbce.png", group: "Haber" },
+            { name: "Ekol Haber", url: "https://ekoltv-live.ercdn.net/ekoltv/ekoltv.m3u8", logo: "https://i.ibb.co/Ln92Dj2/Ekoltv.png", group: "Haber" },
+            { name: "Benguturk TV", url: "https://tv.ensonhaber.com/benguturk/benguturk.m3u8", logo: "http://assets.tvcdn.net/a8fd43de-872a-4e58-9f07-ff22d21a6c24.png", group: "Haber" },
+            { name: "TBMM TV", url: "https://meclistv-live.ercdn.net/meclistv/meclistv.m3u8", logo: "http://assets.tvcdn.net/370c4e6f-8d30-400c-b298-c6a37b19e5dd.png", group: "Haber" },
+            { name: "DHA Canli", url: "https://603c568fccdf5.streamlock.net/live/dhaweb1_C5efC/playlist.m3u8", logo: "http://assets.tvcdn.net/773ca7a4-b658-4d6d-8836-e13e582c4229.png", group: "Haber" },
+            { name: "Bloomberg HT", url: "https://ciner.daioncdn.net/bloomberght/bloomberght.m3u8", logo: "http://assets.tvcdn.net/2a1808ad-733e-4223-a8b3-34be18ef21f9.png", group: "Ekonomi" },
+            { name: "TRT 2", url: "https://tv-trt2.medya.trt.com.tr/master.m3u8", logo: "http://assets.tvcdn.net/7bab6062-acec-4452-a419-345ab95f24e9.png", group: "Eglence" },
+            { name: "TRT World", url: "https://tv-trtworld.medya.trt.com.tr/master.m3u8", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/TRT_World.svg/512px-TRT_World.svg.png", group: "Yurt Disi" },
+            { name: "TRT Avaz", url: "https://tv-trtavaz.medya.trt.com.tr/master.m3u8", logo: "http://assets.tvcdn.net/53dd1d5f-aa72-4bea-91d0-8c2d00783367.png", group: "Yurt Disi" },
+            { name: "TRT Belgesel", url: "https://tv-trtbelgesel.medya.trt.com.tr/master.m3u8", logo: "http://assets.tvcdn.net/1da7293b-5598-4e00-a5f8-3bd327af9467.png", group: "Belgesel" },
+            { name: "Cine 1 TV", url: "http://canliyayin.cine1.com.tr/memfs/cbaef080-a742-4644-9e9e-2b9f6a5103c3.m3u8", logo: "https://www.lyngsat.com/logo/tv/cc/cine-1-tr.png", group: "Eglence" },
+            { name: "Ciftci TV", url: "https://live.artidijitalmedya.com/artidijital_ciftcitv/ciftcitv/playlist.m3u8", logo: "https://i.imgur.com/CLzP4vL.png", group: "Eglence" },
+            { name: "Tivi 6", url: "https://live.artidijitalmedya.com/artidijital_tivi6/tivi6/playlist.m3u8", logo: "https://i.imgur.com/Mbi0jbz.png", group: "Eglence" },
+            { name: "Meltem TV", url: "https://vhxyrsly.rocketcdn.com/meltemtv/playlist.m3u8", logo: "https://i.imgur.com/C3m6w5S.png", group: "Eglence" },
+            { name: "DIYANET TV", url: "https://eustr73.mediatriple.net/videoonlylive/mtikoimxnztxlive/broadcast_5e3bf95a47e07.smil/playlist.m3u8", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/Diyanet_TV_logo.svg/512px-Diyanet_TV_logo.svg.png", group: "Dini" },
+            { name: "DOST TV", url: "https://dost.stream.emsal.im/tv/live.m3u8", logo: "https://dosttv.com/wp-content/uploads/2022/02/dost_logo.png", group: "Dini" },
+            { name: "Semarkand TV", url: "https://b01c02nl.mediatriple.net/videoonlylive/mtisvwurbfcyslive/broadcast_58d915bd40efc.smil/playlist.m3u8", logo: "https://i.imgur.com/UVGGrQd.png", group: "Dini" },
+            { name: "Rehber TV", url: "https://cdn4.yayin.com.tr/rehbertv/tracks-v1a1/mono.m3u8", logo: "https://i.imgur.com/fpkaw78.png", group: "Dini" },
+            { name: "Lalegul TV", url: "https://lbl.netmedya.net/hls/lalegultv.m3u8", logo: "https://i.imgur.com/wwCysFs.png", group: "Dini" },
+            { name: "TRT Spor", url: "http://162.212.179.33:80/dvrfl05/gin-trtspor/playlist.m3u8", logo: "http://assets.tvcdn.net/98d69f74-e6dc-4d4a-95c6-666683834a28.png", group: "Spor" },
+            { name: "TRT Spor Yildiz", url: "https://tv-trtspor2.medya.trt.com.tr/master.m3u8", logo: "http://assets.tvcdn.net/27f74187-ef2a-4928-9515-77422081119c.png", group: "Spor" },
+            { name: "A Spor", url: "https://rnttwmjcin.turknet.ercdn.net/lcpmvefbyo/aspor/aspor_720p.m3u8", logo: "http://assets.tvcdn.net/14f4941c-00e7-4662-9a21-8203dc37b51a.png", group: "Spor" },
+            { name: "HT Spor", url: "https://ciner-live.ercdn.net/htspor/htspor.m3u8", logo: "https://i.ibb.co/F0Tsz1v/htsportr.png", group: "Spor" },
+            { name: "Sports TV", url: "https://live.sportstv.com.tr/hls/low/sportstv_hd/index.m3u8", logo: "http://assets.tvcdn.net/96bc5554-741b-4e91-8b4f-7b3bcc1e4c1d.png", group: "Spor" },
+            { name: "Ekol Sports", url: "https://ekoltv-live.ercdn.net/ekolsport/ekolsport.m3u8", logo: "https://i.ibb.co/Y4tR1tTm/Ekolsports.jpg", group: "Spor" },
+            { name: "TJK TV", url: "https://tjktv-live.tjk.org/tjktv.m3u8", logo: "http://assets.tvcdn.net/bcbd8593-677e-438a-9077-abe1cce5ffc2.png", group: "Spor" },
+            { name: "TJK TV 2", url: "https://tjktv-live.tjk.org/tjktv2/tjktv2.m3u8", logo: "http://assets.tvcdn.net/bcbd8593-677e-438a-9077-abe1cce5ffc2.png", group: "Spor" },
+            { name: "TRT Muzik", url: "https://tv-trtmuzik.medya.trt.com.tr/master.m3u8", logo: "http://assets.tvcdn.net/e9efa31e-106b-40e0-ab4e-a760061c7ad6.png", group: "Muzik" },
+            { name: "Power TV", url: "https://live.artidijitalmedya.com/artidijital_powertv/powertv/playlist.m3u8", logo: "http://assets.tvcdn.net/ccb54b98-472f-4c36-a48f-46431c84ab6a.png", group: "Muzik" },
+            { name: "Powerturk TV", url: "https://live.artidijitalmedya.com/artidijital_powerturktv/powerturktv/playlist.m3u8", logo: "http://assets.tvcdn.net/c866b6f0-00bd-40b9-9583-8cbdbe6a503e.png", group: "Muzik" },
+            { name: "Powerturk Taptaze", url: "https://livetv.powerapp.com.tr/pturktaptaze/taptaze.smil/playlist.m3u8", logo: "http://assets.tvcdn.net/ebb82c5c-86ac-4dc5-ba78-b26e536cebf7.png", group: "Muzik" },
+            { name: "Powerturk Slow", url: "https://livetv.powerapp.com.tr/pturkslow/slow.smil/playlist.m3u8", logo: "https://i.imgur.com/tQSoQXW.png", group: "Muzik" },
+            { name: "Powerturk Akustik", url: "https://livetv.powerapp.com.tr/pturkakustik/akustik.smil/playlist.m3u8", logo: "https://i.imgur.com/driabBO.png", group: "Muzik" },
+            { name: "Power Love", url: "https://livetv.powerapp.com.tr/plove/love.smil/playlist.m3u8", logo: "https://i.imgur.com/0RzUswR.png", group: "Muzik" },
+            { name: "Power Dance", url: "https://livetv.powerapp.com.tr/dance/dance.smil/playlist.m3u8", logo: "https://i.imgur.com/QpPteBO.png", group: "Muzik" },
+            { name: "Number 1 TV", url: "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/broadcast_5c9e17cd59e8b.smil/playlist.m3u8", logo: "https://i.imgur.com/02cDIBi.png", group: "Muzik" },
+            { name: "Number 1 Turk", url: "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/broadcast_5c9e187770143.smil/playlist.m3u8", logo: "https://i.imgur.com/18zjk3q.png", group: "Muzik" },
+            { name: "Number 1 Dance", url: "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e2aa8acf44_1/playlist.m3u8", logo: "https://i.imgur.com/ZM4PSyq.png", group: "Muzik" },
+            { name: "Number 1 Damar", url: "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e198784bdc_1/playlist.m3u8", logo: "https://i.imgur.com/rYtbAGZ.png", group: "Muzik" },
+            { name: "Number 1 Ask", url: "https://b01c02nl.mediatriple.net/videoonlylive/mtkgeuihrlfwlive/u_stream_5c9e18f9cea15_1/playlist.m3u8", logo: "http://assets.tvcdn.net/a93b01d9-2c8f-4406-b5f9-abdf2f600e79.png", group: "Muzik" },
+            { name: "Kral Pop TV", url: "https://dogus.daioncdn.net/kralpoptv/kralpoptv.m3u8?app=kralpoptv_web", logo: "http://assets.tvcdn.net/61431fea-4103-46a3-9f8c-aad1504b9776.png", group: "Muzik" },
+            { name: "Dream Turk", url: "https://live.duhnet.tv/S2/HLS_LIVE/dreamturknp/playlist.m3u8", logo: "http://assets.tvcdn.net/b7ff7221-f255-439d-9ee9-0f73348005b8.png", group: "Muzik" },
+            { name: "TRT Cocuk", url: "https://tv-trtcocuk.medya.trt.com.tr/master.m3u8", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/TRT_%C3%87ocuk_logo_%282021%29.svg/512px-TRT_%C3%87ocuk_logo_%282021%29.svg.png", group: "Cocuk" },
+            { name: "TRT Diyanet Cocuk", url: "https://tv-trtdiyanetcocuk.medya.trt.com.tr/master.m3u8", logo: "https://i.imgur.com/8PmXz9t.png", group: "Cocuk" },
+            { name: "TRT EBA TV", url: "https://tv-e-okul01.medya.trt.com.tr/master.m3u8", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b8/TRT_EBA_TV_logo.svg/400px-TRT_EBA_TV_logo.svg.png", group: "Cocuk" },
+            { name: "Baby TV", url: "https://saran-live.ercdn.net/babytv/index.m3u8", logo: "https://i.imgur.com/4BDJ5FT.png", group: "Cocuk - Yurt Disi" },
+            { name: "Persiana Turkiye", url: "https://turkhls.persiana.live/hls/stream.m3u8", logo: "https://www.lyngsat.com/logo/tv/pp/persiana-turkiye-fr.png", group: "Yurt Disi" },
+            { name: "CAN TV", url: "http://canbroadcast.com:7000/canlican/tv.m3u8", logo: "https://i.imgur.com/oIMtuwB.png", group: "Yurt Disi" },
+            { name: "Sat 7 Turk", url: "https://live.artidijitalmedya.com/artidijital_sat7turk/sat7turk/playlist.m3u8", logo: "https://i.imgur.com/cKQIK4i.png", group: "Yurt Disi" },
+            { name: "Syria TV", url: "https://live.kwikmotion.com/syriatvlive/syriatv.smil/playlist_dvr.m3u8", logo: "https://i.imgur.com/FjuVuXF.jpeg", group: "Yurt Disi" },
+
+            // XXX Kanallar
+            { name: "XXX MILF", url: "https://cdn.redtraffic.net/milf.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Big Dick", url: "https://cdn.redtraffic.net/bigdick.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Big Tits", url: "https://cdn.redtraffic.net/bigtits.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Fetish", url: "https://cdn.redtraffic.net/fetish.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Pornstar", url: "https://cdn.redtraffic.net/pornstar.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Big Ass", url: "https://cdn.redtraffic.net/bigass.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Interracial", url: "https://cdn.redtraffic.net/interracial.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Latina", url: "https://cdn.redtraffic.net/latina.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX POV", url: "https://cdn.redtraffic.net/pov.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Blowjob", url: "https://cdn.redtraffic.net/blowjob.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Teen", url: "https://cdn.redtraffic.net/teen.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Hardcore", url: "https://cdn.redtraffic.net/hardcore.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Cuckold", url: "https://cdn.redtraffic.net/cuckold.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Threesome", url: "https://cdn.redtraffic.net/threesome.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Russian", url: "https://cdn.redtraffic.net/russian.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Lesbian", url: "https://cdn.redtraffic.net/lesbian.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Rough", url: "https://cdn.redtraffic.net/rough.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Gangbang", url: "https://cdn.redtraffic.net/gangbang.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Anal", url: "https://cdn.redtraffic.net/anal.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Compilation", url: "https://cdn.redtraffic.net/compilation.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Brunette", url: "https://cdn.redtraffic.net/brunette.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" },
+            { name: "XXX Blonde", url: "https://cdn.redtraffic.net/blonde.m3u8", logo: "https://i.imgur.com/Pz2wLh6.png", group: "XXX" }
+        ];
+
+        let currentChannelIndex = -1;
+        let currentCategory = 'all';
+        let filteredChannels = [...channels];
+
+        const video = document.getElementById('videoPlayer');
+        const placeholder = document.getElementById('placeholder');
+        const controls = document.getElementById('controls');
+        const loading = document.getElementById('loading');
+        const channelList = document.getElementById('channelList');
+        const currentChannelEl = document.getElementById('currentChannel');
+        const currentGroupEl = document.getElementById('currentGroup');
+        const playBtn = document.getElementById('playBtn');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const muteBtn = document.getElementById('muteBtn');
+        const searchInput = document.getElementById('searchInput');
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+        const toast = document.getElementById('toast');
+
+        // Kanal listesini oluştur
+        function renderChannels(list) {
+            channelList.innerHTML = '';
+            list.forEach((channel, index) => {
+                const item = document.createElement('div');
+                item.className = 'channel-item';
+                item.dataset.index = channels.indexOf(channel);
+                
+                item.innerHTML = `
+                    <img src="${channel.logo}" alt="${channel.name}" class="channel-logo" onerror="this.src='https://via.placeholder.com/50?text=TV'">
+                    <div class="channel-info">
+                        <div class="channel-name">${channel.name}</div>
+                        <div class="channel-group">${channel.group}</div>
+                    </div>
+                    <div class="play-icon"><i class="fas fa-play"></i></div>
+                `;
+                
+                item.addEventListener('click', () => playChannel(channels.indexOf(channel)));
+                channelList.appendChild(item);
+            });
+        }
+
+        // Kanal oynat
+        function playChannel(index) {
+            if (index < 0 || index >= channels.length) return;
+            
+            currentChannelIndex = index;
+            const channel = channels[index];
+            
+            // UI güncelle
+            document.querySelectorAll('.channel-item').forEach(el => el.classList.remove('active'));
+            const activeItem = document.querySelector(`[data-index="${index}"]`);
+            if (activeItem) activeItem.classList.add('active');
+            
+            currentChannelEl.textContent = channel.name;
+            currentGroupEl.textContent = channel.group;
+            
+            // Video yükle
+            placeholder.style.display = 'none';
+            video.style.display = 'block';
+            controls.style.display = 'flex';
+            loading.classList.add('active');
+            
+            video.src = channel.url;
+            video.load();
+            
+            video.play().then(() => {
+                loading.classList.remove('active');
+                showToast(`${channel.name} oynatılıyor...`);
+                updatePlayButton(true);
+            }).catch(err => {
+                loading.classList.remove('active');
+                showToast('Kanal yüklenemedi!', true);
+                console.error('Oynatma hatası:', err);
+            });
+            
+            // Mobilde sidebar kapat
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('open');
+            }
+        }
+
+        // Oynat/Duraklat
+        function togglePlay() {
+            if (video.paused) {
+                video.play();
+                updatePlayButton(true);
+            } else {
+                video.pause();
+                updatePlayButton(false);
+            }
+        }
+
+        function updatePlayButton(playing) {
+            playBtn.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+        }
+
+        // Sonraki/Önceki kanal
+        function nextChannel() {
+            if (currentChannelIndex < channels.length - 1) {
+                playChannel(currentChannelIndex + 1);
+            }
+        }
+
+        function prevChannel() {
+            if (currentChannelIndex > 0) {
+                playChannel(currentChannelIndex - 1);
+            }
+        }
+
+        // Ses kontrolü
+        function toggleMute() {
+            video.muted = !video.muted;
+            muteBtn.innerHTML = video.muted ? '<i class="fas fa-volume-mute"></i>' : '<i class="fas fa-volume-up"></i>';
+        }
+
+        // Tam ekran
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Toast bildirim
+        function showToast(message, isError = false) {
+            toast.textContent = message;
+            toast.style.background = isError ? '#e74c3c' : '#e50914';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Kategori filtreleme
+        document.querySelectorAll('.cat-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const cat = btn.dataset.cat;
+                currentCategory = cat;
+                filterChannels();
+            });
+        });
+
+        // Arama
+        searchInput.addEventListener('input', filterChannels);
+
+        function filterChannels() {
+            const search = searchInput.value.toLowerCase();
+            
+            filteredChannels = channels.filter(ch => {
+                const matchCat = currentCategory === 'all' || ch.group.includes(currentCategory);
+                const matchSearch = ch.name.toLowerCase().includes(search);
+                return matchCat && matchSearch;
+            });
+            
+            renderChannels(filteredChannels);
+        }
+
+        // Event listeners
+        playBtn.addEventListener('click', togglePlay);
+        document.getElementById('nextBtn').addEventListener('click', nextChannel);
+        document.getElementById('prevBtn').addEventListener('click', prevChannel);
+        muteBtn.addEventListener('click', toggleMute);
+        document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+        
+        volumeSlider.addEventListener('input', (e) => {
+            video.volume = e.target.value / 100;
+        });
+
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+        });
+
+        video.addEventListener('ended', () => updatePlayButton(false));
+        video.addEventListener('pause', () => updatePlayButton(false));
+        video.addEventListener('play', () => updatePlayButton(true));
+
+        // Klavye kısayolları
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && currentChannelIndex !== -1) {
+                e.preventDefault();
+                togglePlay();
+            }
+            if (e.code === 'ArrowRight') nextChannel();
+            if (e.code === 'ArrowLeft') prevChannel();
+            if (e.code === 'KeyF') toggleFullscreen();
+        });
+
+        // Başlat
+        renderChannels(channels);
+    </script>
+</body>
+</html>
