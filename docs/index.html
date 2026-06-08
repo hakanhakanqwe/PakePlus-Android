@@ -1,11 +1,474 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus-Android</title>
-    </head>
-    <body>
-        <h1>PakePlus-Android</h1>
-    </body>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>IPTV Player</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    overflow: hidden;
+    position: fixed;
+}
+
+#player {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+/* DOKUNUNCA GELEN ÜST BAR - Dosya seçici burada */
+#topBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 15px;
+    z-index: 100;
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#topBar.show {
+    transform: translateY(0);
+}
+
+#fileInput {
+    flex: 1;
+    color: #fff;
+    font-size: 13px;
+}
+
+#menuBtn {
+    width: 45px;
+    height: 45px;
+    background: #0066ff;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* DOKUNUNCA GELEN ALT BAR - Kontroller burada */
+#bottomBar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.9);
+    padding: 15px;
+    z-index: 100;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+#bottomBar.show {
+    transform: translateY(0);
+}
+
+#bottomBar button {
+    width: 55px;
+    height: 55px;
+    background: none;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: 0.2s;
+}
+
+#bottomBar button:active {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: #fff;
+}
+
+/* Kanal Listesi - Sidebar */
+#channelList {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 100%;
+    background: rgba(10, 10, 10, 0.98);
+    z-index: 90;
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    overflow-y: auto;
+    padding-top: 20px;
+    border-left: 1px solid #333;
+}
+
+#channelList.active {
+    transform: translateX(0);
+}
+
+.channel-item {
+    padding: 15px 20px;
+    border-bottom: 1px solid #222;
+    cursor: pointer;
+    font-size: 15px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.channel-item:active, .channel-item.active {
+    background: #0066ff;
+}
+
+/* Bilgi Ekranı */
+#info {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.9);
+    padding: 20px 50px;
+    border-radius: 10px;
+    font-size: 20px;
+    opacity: 0;
+    transition: 0.3s;
+    pointer-events: none;
+    z-index: 200;
+    text-align: center;
+}
+
+#info.show {
+    opacity: 1;
+}
+
+/* Ses Göstergesi */
+#volumeBox {
+    position: absolute;
+    top: 40%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.9);
+    padding: 15px 40px;
+    border-radius: 10px;
+    font-size: 26px;
+    opacity: 0;
+    transition: 0.2s;
+    pointer-events: none;
+    z-index: 150;
+}
+
+#volumeBox.show {
+    opacity: 1;
+}
+
+/* Dokunma Alanı - Video üzerinde */
+#touchArea {
+    position: absolute;
+    top: 80px;
+    bottom: 80px;
+    left: 0;
+    right: 0;
+    z-index: 50;
+}
+</style>
+</head>
+<body>
+
+<div id="player">
+
+    <!-- ÜST BAR - Dokununca gelir -->
+    <div id="topBar">
+        <input type="file" id="fileInput" accept=".m3u,.m3u8,.txt" onchange="loadFile(this)">
+        <button id="menuBtn" onclick="toggleMenu()">☰</button>
+    </div>
+
+    <!-- ALT BAR - Dokununca gelir -->
+    <div id="bottomBar">
+        <button onclick="prevChannel()">⏮</button>
+        <button onclick="togglePlay()">⏯</button>
+        <button onclick="nextChannel()">⏭</button>
+    </div>
+
+    <!-- Video -->
+    <video id="video" playsinline></video>
+
+    <!-- Dokunma Alanı -->
+    <div id="touchArea" onclick="toggleControls()"></div>
+
+    <!-- Bilgi -->
+    <div id="info">M3U dosyası seçin</div>
+
+    <!-- Ses -->
+    <div id="volumeBox">🔊 100%</div>
+
+    <!-- Kanal Listesi -->
+    <div id="channelList"></div>
+
+</div>
+
+<script>
+var video = document.getElementById('video');
+var topBar = document.getElementById('topBar');
+var bottomBar = document.getElementById('bottomBar');
+var channelList = document.getElementById('channelList');
+var info = document.getElementById('info');
+var volumeBox = document.getElementById('volumeBox');
+
+var channels = [];
+var currentIndex = 0;
+var hls = null;
+var infoTimer, volumeTimer, hideTimer;
+var controlsVisible = false;
+
+// ========== KONTROLLERİ GÖSTER/GİZLE ==========
+
+function toggleControls() {
+    controlsVisible = !controlsVisible;
+    
+    if (controlsVisible) {
+        topBar.classList.add('show');
+        bottomBar.classList.add('show');
+        
+        // 5 saniye sonra otomatik gizle
+        clearTimeout(hideTimer);
+        hideTimer = setTimeout(hideControls, 5000);
+    } else {
+        hideControls();
+    }
+}
+
+function hideControls() {
+    controlsVisible = false;
+    topBar.classList.remove('show');
+    bottomBar.classList.remove('show');
+    channelList.classList.remove('active');
+}
+
+// ========== DOSYA YÜKLEME ==========
+
+function loadFile(input) {
+    var file = input.files[0];
+    if (!file) return;
+    
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        parseM3U(e.target.result);
+        showInfo(file.name + '<br>' + channels.length + ' kanal');
+        hideControls();
+    };
+    reader.readAsText(file);
+}
+
+// ========== M3U PARSE ==========
+
+function parseM3U(text) {
+    channels = [];
+    var lines = text.split('\n');
+    var currentName = '';
+    
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        
+        if (line.indexOf('#EXTINF') === 0) {
+            var nameMatch = line.match(/tvg-name="([^"]+)"/i);
+            if (nameMatch) {
+                currentName = nameMatch[1];
+            } else {
+                var comma = line.lastIndexOf(',');
+                currentName = comma > -1 ? line.substring(comma + 1) : 'Kanal ' + (channels.length + 1);
+            }
+        } else if (line && line[0] !== '#' && currentName && line.indexOf('http') === 0) {
+            channels.push({name: currentName, url: line});
+            currentName = '';
+        }
+    }
+    
+    if (channels.length === 0) {
+        for (var i = 0; i < lines.length; i++) {
+            if (lines[i].indexOf('#EXTINF') >= 0) {
+                var url = lines[i + 1];
+                if (url && !url.startsWith('#') && url.trim()) {
+                    var name = lines[i].split(',').pop() || 'Kanal ' + (channels.length + 1);
+                    channels.push({name: name.trim(), url: url.trim()});
+                }
+            }
+        }
+    }
+    
+    renderChannels();
+    if (channels.length > 0) playChannel(0);
+}
+
+function renderChannels() {
+    channelList.innerHTML = '';
+    
+    channels.forEach(function(ch, idx) {
+        var div = document.createElement('div');
+        div.className = 'channel-item';
+        div.textContent = (idx + 1) + '. ' + ch.name;
+        div.onclick = function() {
+            playChannel(idx);
+        };
+        channelList.appendChild(div);
+    });
+}
+
+// ========== OYNATMA ==========
+
+function playChannel(index) {
+    if (index < 0 || index >= channels.length) return;
+    
+    currentIndex = index;
+    var ch = channels[index];
+    
+    if (hls) {
+        hls.destroy();
+        hls = null;
+    }
+    
+    if (ch.url.indexOf('.m3u8') > -1 && Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(ch.url);
+        hls.attachMedia(video);
+    } else {
+        video.src = ch.url;
+    }
+    
+    video.play().then(function() {
+        updateActive();
+        showInfo(ch.name);
+    }).catch(function() {
+        showInfo('Oynatma hatası!');
+    });
+}
+
+function updateActive() {
+    var items = channelList.getElementsByClassName('channel-item');
+    for (var i = 0; i < items.length; i++) {
+        items[i].classList.toggle('active', i === currentIndex);
+    }
+}
+
+// ========== KONTROLLER ==========
+
+function toggleMenu() {
+    channelList.classList.toggle('active');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideControls, 5000);
+}
+
+function togglePlay() {
+    if (video.paused) {
+        video.play();
+    } else {
+        video.pause();
+    }
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideControls, 5000);
+}
+
+function nextChannel() {
+    if (channels.length === 0) return;
+    var next = currentIndex + 1;
+    if (next >= channels.length) next = 0;
+    playChannel(next);
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideControls, 5000);
+}
+
+function prevChannel() {
+    if (channels.length === 0) return;
+    var prev = currentIndex - 1;
+    if (prev < 0) prev = channels.length - 1;
+    playChannel(prev);
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideControls, 5000);
+}
+
+// ========== GÖSTERGELER ==========
+
+function showInfo(text) {
+    info.innerHTML = text;
+    info.classList.add('show');
+    clearTimeout(infoTimer);
+    infoTimer = setTimeout(function() {
+        info.classList.remove('show');
+    }, 2500);
+}
+
+function showVolume() {
+    var vol = Math.round(video.volume * 100);
+    volumeBox.textContent = '🔊 ' + vol + '%';
+    volumeBox.classList.add('show');
+    clearTimeout(volumeTimer);
+    volumeTimer = setTimeout(function() {
+        volumeBox.classList.remove('show');
+    }, 1000);
+}
+
+// ========== EVENTS ==========
+
+// Fare tekerleği - ses
+video.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    var delta = e.deltaY < 0 ? 0.05 : -0.05;
+    video.volume = Math.max(0, Math.min(1, video.volume + delta));
+    showVolume();
+});
+
+// Swipe
+var touchStartX = 0;
+video.addEventListener('touchstart', function(e) {
+    touchStartX = e.touches[0].clientX;
+}, {passive: true});
+
+video.addEventListener('touchend', function(e) {
+    var diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+        diff > 0 ? nextChannel() : prevChannel();
+    }
+}, {passive: true});
+
+// Klavye
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') nextChannel();
+    if (e.key === 'ArrowLeft') prevChannel();
+    if (e.key === ' ') togglePlay();
+    if (e.key === 'm') toggleMenu();
+});
+
+// Başlangıç
+setTimeout(function() {
+    toggleControls();
+}, 500);
+</script>
+
+</body>
 </html>
